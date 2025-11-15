@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meine To-Do-Liste</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="todo-container">
+        <h1>Meine Aufgaben</h1>
+    
+        <div class="input-section">
+            <input type="text" id="task-input" placeholder="Neue Aufgabe hinzufügen...">
+            <select id="priority-select">
+                <option value="low">Niedrig</option>
+                <option value="medium" selected>Mittel</option>
+                <option value="high">Hoch</option>
+            </select>
+            <button id="add-button">Hinzufügen</button>
+        </div>
+    
+        <div class="filter-section">
+            <button id="filter-all" class="active">Alle</button>
+            <button id="filter-open">Offen</button>
+            <button id="filter-completed">Erledigt</button>
+        </div>
+    
+        <ul id="task-list">
+            </ul>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
