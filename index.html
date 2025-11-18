@@ -9,7 +9,7 @@
 <body>
 
     <div class="todo-container">
-        <h1>Meine Aufgaben</h1>
+        <h1>Meine To-dos</h1>
     
         <div class="input-section">
             <input type="text" id="task-input" placeholder="Neue Aufgabe hinzufügen...">
@@ -29,6 +29,28 @@
     
         <ul id="task-list">
             </ul>
+    </div>
+
+    <div id="task-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <h2>Aufgabendetails</h2>
+            <h3 id="modal-task-title"></h3>
+
+            <div class="detail-section">
+                <h4>Notizen:</h4>
+                <textarea id="modal-note-input" placeholder="Fügen Sie hier Notizen hinzu..."></textarea>
+            </div>
+
+            <div class="detail-section">
+                <h4>(Minuten):</h4>
+                <input type="number" id="modal-timer-input" min="1" value="5">
+                <button id="start-timer-button">Timer starten</button>
+                <p id="modal-timer-display" class="timer-display"></p>
+            </div>
+
+            <button id="save-details-button">Speichern</button>
+        </div>
     </div>
     <script src="script.js"></script>
 </body>
