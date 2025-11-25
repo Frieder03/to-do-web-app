@@ -9,12 +9,13 @@ const prioritySelect    = document.getElementById('priority-select');
 // Modal-Elemente
 const taskModal         = document.getElementById('task-modal');
 const modalTaskTitle    = document.getElementById('modal-task-title');
+const modalDeadlineInput = document.getElementById('modal-deadline-input');
+const saveDetailsButton = document.getElementById('save-details-button');
+const closeButton       = taskModal.querySelector('.close-button');
 const modalNoteInput    = document.getElementById('modal-note-input');
 const modalTimerInput   = document.getElementById('modal-timer-input');
 const modalTimerDisplay = document.getElementById('modal-timer-display');
 const startTimerButton  = document.getElementById('start-timer-button');
-const saveDetailsButton = document.getElementById('save-details-button');
-const closeButton       = taskModal.querySelector('.close-button');
 
 // Filter-Buttons
 const filterAllButton       = document.getElementById('filter-all');
@@ -23,24 +24,11 @@ const filterCompletedButton = document.getElementById('filter-completed');
 
 // === GLOBALE STATE-VARIABLEN ===
 
-/**
- * Aktuelle Aufgaben in Memory (Single Source of Truth).
- * Jede Aufgabe:
- * {
- *   id: string,
- *   text: string,
- *   completed: boolean,
- *   priority: 'low' | 'medium' | 'high',
- *   note: string,
- *   deadline: number | null   // Timestamp in ms, wann der Timer abläuft
- * }
- */
 let tasks = [];
 
-let currentFilter = 'all';          // 'all' | 'open' | 'completed'
-let currentTaskIdInModal = null;    // id der Task, die gerade im Modal bearbeitet wird
-
-let globalTimerInterval = null;     // Ein Intervall, das alle Timer aktualisiert
+let currentFilter = 'all';
+let currentTaskIdInModal = null;
+let globalTimerInterval = null;
 
 const STORAGE_KEY = 'todoTasks';
 
@@ -49,7 +37,6 @@ const STORAGE_KEY = 'todoTasks';
 init();
 
 function init() {
-    // Events für Eingabe & Add-Button
     addButton.addEventListener('click', handleAddTask);
     taskInput.addEventListener('keypress', (event) => {
         if (event.key === 'Enter') {
@@ -57,10 +44,8 @@ function init() {
         }
     });
 
-    // Event Delegation für die Task-Liste
     taskList.addEventListener('click', handleTaskListClick);
 
-    // Modal-Events
     closeButton.addEventListener('click', closeModal);
     window.addEventListener('click', (event) => {
         if (event.target === taskModal) {
@@ -71,23 +56,20 @@ function init() {
     saveDetailsButton.addEventListener('click', saveDetails);
     startTimerButton.addEventListener('click', handleTimerButtonClick);
 
-    // Filter-Buttons
     filterAllButton.addEventListener('click', () => setFilter('all'));
     filterOpenButton.addEventListener('click', () => setFilter('open'));
     filterCompletedButton.addEventListener('click', () => setFilter('completed'));
 
-    // localStorage laden
     loadTasksFromStorage();
-
-    // Timer-Intervall starten
     startGlobalTimerLoop();
 
-    // Auf Änderungen aus anderen Tabs reagieren
     window.addEventListener('storage', (event) => {
         if (event.key === STORAGE_KEY) {
             loadTasksFromStorage();
         }
     });
+
+    requestNotificationPermission();
 }
 
 // === HANDLER: AUFGABEN HINZUFÜGEN ===
@@ -118,13 +100,6 @@ function handleAddTask() {
 
 // === EVENT-DELEGATION FÜR TASK-LISTE ===
 
-/**
- * Zentrale Click-Logik für die gesamte Task-Liste.
- * Differenziert anhand von Klassen:
- * - .delete-button  → löschen
- * - .task-text      → erledigt toggeln
- * - sonst           → Modal öffnen
- */
 function handleTaskListClick(event) {
     const listItem = event.target.closest('.task-item');
     if (!listItem) return;
@@ -133,19 +108,16 @@ function handleTaskListClick(event) {
     const task = tasks.find(t => t.id === taskId);
     if (!task) return;
 
-    // ➜ NEU: Status-Button links neben "Löschen"
     if (event.target.classList.contains('status-toggle')) {
-        toggleTaskCompleted(taskId);  // erledigt/offen umschalten
+        toggleTaskCompleted(taskId);
         return;
     }
 
-    // Löschen-Button
     if (event.target.classList.contains('delete-button')) {
         deleteTask(taskId);
         return;
     }
 
-    // Klick irgendwo sonst auf das Listenelement → Modal öffnen
     openModalForTask(taskId);
 }
 
@@ -157,21 +129,22 @@ function openModalForTask(taskId) {
     if (!task) return;
 
     currentTaskIdInModal = taskId;
-
     modalTaskTitle.textContent = task.text;
     modalNoteInput.value = task.note || '';
 
-    const timeLeftSeconds = getTimeLeftInSeconds(task);
-    updateModalTimerDisplay(timeLeftSeconds);
-
-    modalTimerInput.value = timeLeftSeconds > 0 ? Math.ceil(timeLeftSeconds / 60) : 5;
-
     if (task.deadline) {
-        startTimerButton.textContent = 'Timer stoppen';
+        const date = new Date(task.deadline);
+        const offset = date.getTimezoneOffset() * 60000;
+        const localISOTime = new Date(date.getTime() - offset).toISOString().slice(0, 16);
+        
+        modalDeadlineInput.value = localISOTime;
     } else {
-        startTimerButton.textContent = 'Timer starten';
+        modalDeadlineInput.value = '';
     }
 
+    // Aktualisiert Timer-Display und Button-Text
+    updateModalTimerIfOpen(); 
+    
     taskModal.style.display = 'block';
 }
 
@@ -180,9 +153,6 @@ function closeModal() {
     currentTaskIdInModal = null;
 }
 
-/**
- * Speichert Notizen und ggf. andere Daten aus dem Modal.
- */
 function saveDetails() {
     if (!currentTaskIdInModal) return;
 
@@ -190,27 +160,32 @@ function saveDetails() {
     if (!task) return;
 
     task.note = modalNoteInput.value.trim();
+
+    const dateVal = modalDeadlineInput.value;
+    if (dateVal) {
+        task.deadline = new Date(dateVal).getTime();
+    } else {
+        // HINWEIS: Deadline löschen, wenn Feld leer
+        task.deadline = null; 
+    }
+
     saveTasksToStorage();
+    renderTasks();
     closeModal();
 }
 
 // === TIMER-LOGIK ===
 
-/**
- * Wird geklickt, wenn der Timer-Button im Modal gedrückt wird.
- * - Wenn kein Timer aktiv → startet Timer
- * - Wenn Timer aktiv → stoppt Timer
- */
 function handleTimerButtonClick() {
     if (!currentTaskIdInModal) return;
     const task = tasks.find(t => t.id === currentTaskIdInModal);
     if (!task) return;
 
     if (task.deadline) {
-        // Timer stoppen
+        // Stoppen
         stopTimerForTask(task);
     } else {
-        // Timer starten
+        // Starten
         const minutes = parseInt(modalTimerInput.value, 10) || 0;
         if (minutes <= 0) {
             alert('Bitte eine positive Anzahl an Minuten eingeben.');
@@ -221,31 +196,20 @@ function handleTimerButtonClick() {
 
     saveTasksToStorage();
     renderTasks();
-    // Modal-View updaten
-    const timeLeftSeconds = getTimeLeftInSeconds(task);
-    updateModalTimerDisplay(timeLeftSeconds);
-    startTimerButton.textContent = task.deadline ? 'Timer stoppen' : 'Timer starten';
+    
+    // Timer-Anzeige und Button sofort aktualisieren
+    updateModalTimerIfOpen();
 }
 
-/**
- * Startet Timer für eine bestimmte Task (setzt ein Deadline-Timestamp).
- */
 function startTimerForTask(task, minutes) {
     const now = Date.now();
     task.deadline = now + minutes * 60 * 1000;
 }
 
-/**
- * Stoppt Timer für eine bestimmte Task.
- */
 function stopTimerForTask(task) {
     task.deadline = null;
 }
 
-/**
- * Startet ein zentrales Interval, das alle 1s alle Timer aktualisiert.
- * Läuft nur einmal pro Tab.
- */
 function startGlobalTimerLoop() {
     if (globalTimerInterval) {
         clearInterval(globalTimerInterval);
@@ -261,12 +225,10 @@ function startGlobalTimerLoop() {
             const timeLeftMs = task.deadline - now;
 
             if (timeLeftMs <= 0) {
-                // Timer abgelaufen
                 task.deadline = null;
                 shouldSave = true;
 
-                // Alert nur in diesem Tab
-                alert(`Timer für Aufgabe "${task.text}" ist abgelaufen!`);
+                showNotification(task.text);
             }
         });
 
@@ -274,15 +236,11 @@ function startGlobalTimerLoop() {
             saveTasksToStorage();
         }
 
-        // UI aktualisieren
         updateAllTaskTimerDisplays();
         updateModalTimerIfOpen();
     }, 1000);
 }
 
-/**
- * Gibt verbleibende Zeit in Sekunden zurück, oder 0 wenn kein Timer.
- */
 function getTimeLeftInSeconds(task) {
     if (!task.deadline) return 0;
     const diffMs = task.deadline - Date.now();
@@ -291,9 +249,6 @@ function getTimeLeftInSeconds(task) {
 
 // === UI-UPDATE-FUNKTIONEN (Timer) ===
 
-/**
- * Aktualisiert die Timer-Anzeige im Modal (falls offen).
- */
 function updateModalTimerIfOpen() {
     if (!currentTaskIdInModal) return;
     const task = tasks.find(t => t.id === currentTaskIdInModal);
@@ -302,13 +257,16 @@ function updateModalTimerIfOpen() {
     const seconds = getTimeLeftInSeconds(task);
     updateModalTimerDisplay(seconds);
 
-    // Button-Text korrigieren
-    startTimerButton.textContent = task.deadline ? 'Timer stoppen' : 'Timer starten';
+    // Aktualisiert Button-Text und Timer-Eingabefeld
+    if (task.deadline) {
+        startTimerButton.textContent = 'Timer stoppen';
+        modalTimerInput.disabled = true; // Timer-Minuten sperren, während er läuft
+    } else {
+        startTimerButton.textContent = 'Timer starten';
+        modalTimerInput.disabled = false;
+    }
 }
 
-/**
- * Aktualisiert die Timer-Anzeige aller Aufgaben in der Liste.
- */
 function updateAllTaskTimerDisplays() {
     tasks.forEach(task => {
         const listItem = taskList.querySelector(`.task-item[data-id="${task.id}"]`);
@@ -317,20 +275,20 @@ function updateAllTaskTimerDisplays() {
         const timerSpan = listItem.querySelector('.task-timer');
         if (!timerSpan) return;
 
-        const seconds = getTimeLeftInSeconds(task);
-        const text = formatTimeForDisplay(seconds);
-
-        if (seconds > 0) {
-            timerSpan.textContent = `${text}`;
+        if (task.deadline) {
+            timerSpan.textContent = getFuzzyDeadlineText(task.deadline);
+            
+            if (task.deadline < Date.now()) {
+                timerSpan.style.color = '#d9534f';
+            } else {
+                timerSpan.style.color = '#007bff';
+            }
         } else {
             timerSpan.textContent = '';
         }
     });
 }
 
-/**
- * Timeranzeige im Modal.
- */
 function updateModalTimerDisplay(seconds) {
     if (seconds > 0) {
         modalTimerDisplay.textContent = 'Verbleibend: ' + formatTimeForDisplay(seconds);
@@ -339,9 +297,6 @@ function updateModalTimerDisplay(seconds) {
     }
 }
 
-/**
- * Formatiert Sekunden in "HH:MM:SS" oder "MM:SS".
- */
 function formatTimeForDisplay(totalSeconds) {
     const hours   = Math.floor(totalSeconds / 3600);
     const minutes = Math.floor((totalSeconds % 3600) / 60);
@@ -356,16 +311,53 @@ function formatTimeForDisplay(totalSeconds) {
     }
 }
 
+// === BROWSER-NOTIFICATIONS ===
+
+function requestNotificationPermission() {
+    if (!("Notification" in window)) {
+        console.warn("Dieser Browser unterstützt keine Desktop-Benachrichtigungen.");
+        return;
+    }
+
+    if (Notification.permission === 'default') {
+        Notification.requestPermission().then(permission => {
+            if (permission === 'granted') {
+                console.log('Benachrichtigungsberechtigung erteilt.');
+            } else {
+                console.warn('Benachrichtigungsberechtigung abgelehnt.');
+            }
+        });
+    }
+}
+
+function showNotification(taskText) {
+    if (Notification.permission === 'granted') {
+        
+        const options = {
+            body: `Deine Aufgabe "${taskText}" ist jetzt fällig!`,
+            icon: 'favicon.ico',
+            tag: 'task-reminder-' + Date.now(),
+            vibrate: [200, 100, 200]
+        };
+
+        const notification = new Notification('⏰ To-Do-Timer abgelaufen!', options);
+
+        notification.onclick = function(event) {
+            event.preventDefault();
+            window.focus();
+        };
+
+    } else if (Notification.permission === 'denied') {
+        console.warn('Benachrichtigung konnte nicht gesendet werden, da die Berechtigung verweigert wurde.');
+    }
+}
+
 // === SPEICHERUNG (localStorage) ===
 
 function saveTasksToStorage() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
 }
 
-/**
- * Lädt Tasks aus localStorage und rendert sie neu.
- * Ist tolerant gegenüber alten Strukturen (falls vorhanden).
- */
 function loadTasksFromStorage() {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) {
@@ -385,7 +377,6 @@ function loadTasksFromStorage() {
                 completed: !!t.completed,
                 priority: t.priority || 'medium',
                 note: t.note || '',
-                // Deadline ist ein Timestamp oder null – alles andere wird null
                 deadline: typeof t.deadline === 'number' ? t.deadline : null
             }));
         }
@@ -401,7 +392,6 @@ function loadTasksFromStorage() {
 // === RENDERING DER TASK-LISTE ===
 
 function renderTasks() {
-    // Liste leeren
     taskList.innerHTML = '';
 
     tasks.forEach(task => {
@@ -423,16 +413,13 @@ function renderTasks() {
         }
         toggleButton.dataset.action = 'toggle-status';
         
-        // Text
         const textSpan = document.createElement('span');
         textSpan.classList.add('task-text');
         textSpan.textContent = task.text;
         
-        // Timer
         const timerSpan = document.createElement('span');
         timerSpan.classList.add('task-timer');
         
-        // Löschen
         const deleteButton = document.createElement('button');
         deleteButton.classList.add('delete-button');
         deleteButton.dataset.action = 'delete';
@@ -447,7 +434,6 @@ function renderTasks() {
         taskList.appendChild(listItem);
     });
 
-    // Direkt nach dem Rendern Timer-Anzeigen aktualisieren
     updateAllTaskTimerDisplays();
 }
 
@@ -489,10 +475,8 @@ function toggleTaskCompleted(taskId) {
     const task = tasks.find(t => t.id === taskId);
     if (!task) return;
 
-    // Status umschalten
     task.completed = !task.completed;
 
-    // Speichern & neu rendern (Filter werden dabei berücksichtigt)
     saveTasksToStorage();
     renderTasks();
 }
@@ -500,14 +484,9 @@ function toggleTaskCompleted(taskId) {
 // === HELFER ===
 
 function generateId() {
-    // Simple ID: Timestamp + Random
     return Date.now().toString(36) + Math.random().toString(36).substring(2, 8);
 }
 
-/**
- * Erzeugt zufällig verteilte Sterne im Hintergrund.
- * @param {number} count - Anzahl Sterne
- */
 function createStars(count = 150) {
     const fragment = document.createDocumentFragment();
 
@@ -515,20 +494,17 @@ function createStars(count = 150) {
         const star = document.createElement('div');
         star.classList.add('star');
 
-        // Zufällige Position im Viewport
-        const top = Math.random() * 100;   // 0–100vh
-        const left = Math.random() * 100;  // 0–100vw
+        const top = Math.random() * 100;
+        const left = Math.random() * 100;
         star.style.top = top + 'vh';
         star.style.left = left + 'vw';
 
-        // Zufällige Größe
-        const size = 1 + Math.random() * 2; // 1–3px
+        const size = 1 + Math.random() * 2;
         star.style.width = size + 'px';
         star.style.height = size + 'px';
 
-        // Zufällige Animationsdauer & Verzögerung
-        const duration = 2 + Math.random() * 4; // 2–6s
-        const delay = Math.random() * 4;        // 0–4s
+        const duration = 2 + Math.random() * 4;
+        const delay = Math.random() * 4;
         star.style.animationDuration = duration + 's';
         star.style.animationDelay = delay + 's';
 
@@ -538,5 +514,47 @@ function createStars(count = 150) {
     document.body.appendChild(fragment);
 }
 
-// Direkt beim Laden der Seite Sterne erzeugen
 createStars();
+
+function getFuzzyDeadlineText(deadlineTimestamp) {
+    if (!deadlineTimestamp) return '';
+
+    const now = Date.now();
+    const diffMs = deadlineTimestamp - now;
+    const isOverdue = diffMs < 0;
+    
+    const diffAbs = Math.abs(diffMs);
+    
+    const oneMinute = 60 * 1000;
+    const oneHour   = 60 * oneMinute;
+    const oneDay    = 24 * oneHour;
+    const oneMonth  = 30 * oneDay;
+    const oneYear   = 365 * oneDay;
+
+    let text = '';
+
+    if (diffAbs < oneMinute) {
+        text = 'Jetzt';
+    } else if (diffAbs < oneHour) {
+        const mins = Math.ceil(diffAbs / oneMinute);
+        text = `${mins} Min.`;
+    } else if (diffAbs < oneDay) {
+        const hours = Math.ceil(diffAbs / oneHour);
+        text = `${hours} Std.`;
+    } else if (diffAbs < oneMonth) {
+        const days = Math.ceil(diffAbs / oneDay);
+        text = `${days} Tag(en)`;
+    } else if (diffAbs < oneYear) {
+        const months = Math.round(diffAbs / oneMonth);
+        text = `ca. ${months} Monat(en)`;
+    } else {
+        const years = Math.round(diffAbs / oneYear);
+        text = `ca. ${years} Jahr(en)`;
+    }
+
+    if (isOverdue) {
+        return `Überfällig seit ${text}`;
+    } else {
+        return `in ${text}`;
+    }
+}

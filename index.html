@@ -43,12 +43,18 @@
             </div>
 
             <div class="detail-section">
-                <h4>(Minuten):</h4>
-                <input type="number" id="modal-timer-input" min="1" value="5">
-                <button id="start-timer-button">Timer starten</button>
-                <p id="modal-timer-display" class="timer-display"></p>
+                <h4>Fällig am:</h4>
+                <input type="datetime-local" id="modal-deadline-input">
             </div>
-
+            
+            <div class="detail-section">
+                <h4>Timer starten (Minuten):</h4>
+                <div style="display: flex; align-items: center; margin-bottom: 10px;">
+                    <input type="number" id="modal-timer-input" value="15" min="1" max="999">
+                    <button id="start-timer-button">Timer starten</button>
+                </div>
+                <div id="modal-timer-display">Timer inaktiv.</div>
+            </div>
             <button id="save-details-button">Speichern</button>
         </div>
     </div>

@@ -1,23 +1,29 @@
 body {
     font-family: Arial, sans-serif;
-    background-color: #f4f4f9;
+    background-color: #020617; 
     display: flex;
     justify-content: center;
-    align-items: flex-start;
-    min-height: 100vh;
-    padding-top: 50px;
+    align-items: center;       
+    height: 100vh;             
     margin: 0;
+    overflow: hidden;         
 }
-
-
 
 .todo-container {
     background: #fff;
     padding: 30px;
     border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    width: 100%;
-    max-width: 450px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+    
+    width: 90%;              
+    max-width: 1400px;       
+    height: 90vh;            
+    
+    display: flex;           
+    flex-direction: column;  
+    
+    position: relative;
+    z-index: 1;
 }
 
 h1 {
@@ -28,15 +34,24 @@ h1 {
 
 .input-section {
     display: flex;
+    gap: 10px;               
     margin-bottom: 20px;
 }
 
 #task-input {
-    flex-grow: 1;
-    padding: 10px;
+    flex-grow: 4;            
+    padding: 12px;          
     border: 1px solid #ddd;
-    border-radius: 4px; 
-    margin-right: 5px; 
+    border-radius: 4px;
+    font-size: 16px;
+}
+
+#priority-select {
+    flex-grow: 1;            
+    max-width: 150px;        
+    padding: 10px;
+    border: 1px solid #bbb;
+    border-radius: 4px;
 }
 
 #add-button {
@@ -57,6 +72,11 @@ h1 {
 #task-list {
     list-style: none;
     padding: 0;
+    
+    flex-grow: 1;            
+    overflow-y: auto;        
+    margin-top: 20px;
+    border-top: 1px solid #eee;
 }
 
 .task-item {
@@ -309,7 +329,6 @@ body {
     box-shadow: 0 0 4px rgba(0, 123, 255, 0.4);
 }
 
-/* kleiner runder Status-Button links */
 .status-toggle {
     width: 20px;
     height: 20px;
@@ -324,12 +343,21 @@ body {
     transition: background-color 0.2s, border-color 0.2s, transform 0.1s;
 }
 
-/* wenn Task erledigt ist → Button füllt sich */
 .status-toggle.completed {
-    background-color: #22c55e;   /* Grün */
+    background-color: #22c55e;
     border-color: #22c55e;
 }
 
 .status-toggle:hover {
     transform: scale(1.05);
+}
+
+#modal-deadline-input {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-family: Arial, sans-serif;
+    font-size: 16px;
+    box-sizing: border-box;
 }
