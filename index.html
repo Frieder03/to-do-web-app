@@ -3,61 +3,893 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Meine To-Do-Liste</title>
-    <link rel="stylesheet" href="style.css">
+    <title>TaskFlow - Collaborative To-Do Listen</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Source+Sans+3:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #1a3a52;
+            --primary-light: #2d5370;
+            --accent: #e67e22;
+            --accent-light: #f39c12;
+            --success: #27ae60;
+            --danger: #e74c3c;
+            --bg-main: #f8f9fa;
+            --bg-card: #ffffff;
+            --text-primary: #2c3e50;
+            --text-secondary: #7f8c8d;
+            --border: #e1e8ed;
+            --shadow: rgba(26, 58, 82, 0.08);
+            --priority-low: #3498db;
+            --priority-medium: #f39c12;
+            --priority-high: #e74c3c;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Source Sans 3', sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+
+        .app-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        /* Login/Register Screen */
+        .auth-screen {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 2rem;
+        }
+
+        .auth-card {
+            background: var(--bg-card);
+            border-radius: 16px;
+            box-shadow: 0 20px 60px var(--shadow);
+            padding: 3rem;
+            width: 100%;
+            max-width: 480px;
+            animation: slideUp 0.6s ease-out;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .auth-title {
+            font-family: 'DM Serif Display', serif;
+            font-size: 2.5rem;
+            color: var(--primary);
+            margin-bottom: 0.5rem;
+            letter-spacing: -0.5px;
+        }
+
+        .auth-subtitle {
+            color: var(--text-secondary);
+            margin-bottom: 2rem;
+            font-size: 1rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 0.875rem 1rem;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            font-size: 1rem;
+            font-family: 'Source Sans 3', sans-serif;
+            transition: all 0.3s ease;
+            background: var(--bg-main);
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--accent);
+            background: white;
+            box-shadow: 0 0 0 4px rgba(230, 126, 34, 0.1);
+        }
+
+        .password-requirements {
+            margin-top: 0.5rem;
+            padding: 0.75rem;
+            background: var(--bg-main);
+            border-radius: 6px;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        .requirement {
+            display: flex;
+            align-items: center;
+            margin: 0.25rem 0;
+        }
+
+        .requirement::before {
+            content: "○";
+            margin-right: 0.5rem;
+            color: var(--text-secondary);
+        }
+
+        .requirement.met::before {
+            content: "✓";
+            color: var(--success);
+        }
+
+        .btn {
+            width: 100%;
+            padding: 1rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: 'Source Sans 3', sans-serif;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent) 0%, var(--accent-light) 100%);
+            color: white;
+            box-shadow: 0 4px 12px rgba(230, 126, 34, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(230, 126, 34, 0.4);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: var(--primary);
+            border: 2px solid var(--primary);
+            margin-top: 1rem;
+        }
+
+        .btn-secondary:hover {
+            background: var(--primary);
+            color: white;
+        }
+
+        .error-message {
+            background: #fee;
+            color: var(--danger);
+            padding: 0.875rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            border-left: 4px solid var(--danger);
+            font-size: 0.9rem;
+        }
+
+        /* Main App */
+        .app-header {
+            background: white;
+            padding: 1.5rem 2rem;
+            border-radius: 16px;
+            box-shadow: 0 4px 20px var(--shadow);
+            margin-bottom: 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            animation: slideDown 0.5s ease-out;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .app-logo {
+            font-family: 'DM Serif Display', serif;
+            font-size: 2rem;
+            color: var(--primary);
+            letter-spacing: -0.5px;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .user-name {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .btn-logout {
+            padding: 0.625rem 1.25rem;
+            background: var(--danger);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+        }
+
+        .btn-logout:hover {
+            background: #c0392b;
+            transform: translateY(-2px);
+        }
+
+        .lists-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 2rem;
+        }
+
+        .list-card {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 8px 30px var(--shadow);
+            padding: 2rem;
+            animation: fadeIn 0.6s ease-out;
+            animation-fill-mode: both;
+        }
+
+        .list-card:nth-child(1) {
+            animation-delay: 0.1s;
+        }
+
+        .list-card:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        .list-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 3px solid var(--accent);
+        }
+
+        .list-title {
+            font-family: 'DM Serif Display', serif;
+            font-size: 1.75rem;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .list-badge {
+            font-size: 0.75rem;
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-family: 'Source Sans 3', sans-serif;
+        }
+
+        .badge-private {
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+
+        .badge-public {
+            background: #e3f2fd;
+            color: #1565c0;
+        }
+
+        .add-task-form {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            padding: 1.25rem;
+            background: var(--bg-main);
+            border-radius: 12px;
+        }
+
+        .task-input-group {
+            display: flex;
+            gap: 0.75rem;
+        }
+
+        .task-input {
+            flex: 1;
+            padding: 0.75rem;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            font-size: 0.95rem;
+            font-family: 'Source Sans 3', sans-serif;
+            transition: all 0.3s ease;
+        }
+
+        .task-input:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(230, 126, 34, 0.1);
+        }
+
+        .priority-select {
+            padding: 0.75rem;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            font-size: 0.95rem;
+            font-family: 'Source Sans 3', sans-serif;
+            cursor: pointer;
+            background: white;
+            min-width: 140px;
+            font-weight: 600;
+        }
+
+        .priority-select:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        .btn-add-task {
+            padding: 0.75rem 1.5rem;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            font-size: 0.95rem;
+        }
+
+        .btn-add-task:hover {
+            background: var(--primary-light);
+            transform: translateY(-2px);
+        }
+
+        .tasks-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .task-item {
+            background: white;
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            padding: 1rem;
+            transition: all 0.3s ease;
+            animation: taskSlideIn 0.4s ease-out;
+        }
+
+        @keyframes taskSlideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .task-item:hover {
+            border-color: var(--accent);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+
+        .task-item.completed {
+            opacity: 0.6;
+            background: var(--bg-main);
+        }
+
+        .task-content {
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+        }
+
+        .task-checkbox {
+            width: 24px;
+            height: 24px;
+            cursor: pointer;
+            accent-color: var(--success);
+            margin-top: 0.25rem;
+        }
+
+        .task-details {
+            flex: 1;
+        }
+
+        .task-text {
+            font-size: 1rem;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+
+        .task-item.completed .task-text {
+            text-decoration: line-through;
+        }
+
+        .task-meta {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        .priority-badge {
+            padding: 0.25rem 0.625rem;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .priority-low {
+            background: #e3f2fd;
+            color: var(--priority-low);
+        }
+
+        .priority-medium {
+            background: #fff3e0;
+            color: var(--priority-medium);
+        }
+
+        .priority-high {
+            background: #ffebee;
+            color: var(--priority-high);
+        }
+
+        .user-badge {
+            display: flex;
+            align-items: center;
+            gap: 0.375rem;
+        }
+
+        .user-badge::before {
+            content: "👤";
+            font-size: 0.9rem;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 3rem 1rem;
+            color: var(--text-secondary);
+        }
+
+        .empty-state-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        @media (max-width: 768px) {
+            .lists-container {
+                grid-template-columns: 1fr;
+            }
+
+            .task-input-group {
+                flex-direction: column;
+            }
+
+            .auth-card {
+                padding: 2rem;
+            }
+
+            .app-header {
+                flex-direction: column;
+                gap: 1rem;
+                text-align: center;
+            }
+        }
+    </style>
 </head>
 <body>
-
-    <div class="todo-container">
-        <h1>Meine To-dos</h1>
-    
-        <div class="input-section">
-            <input type="text" id="task-input" placeholder="Neue Aufgabe hinzufügen...">
-            <select id="priority-select">
-                <option value="low">Niedrig</option>
-                <option value="medium" selected>Mittel</option>
-                <option value="high">Hoch</option>
-            </select>
-            <button id="add-button">Hinzufügen</button>
-        </div>
-    
-        <div class="filter-section">
-            <button id="filter-all" class="active">Alle</button>
-            <button id="filter-open">Offen</button>
-            <button id="filter-completed">Erledigt</button>
-        </div>
-    
-        <ul id="task-list">
-            </ul>
-    </div>
-
-    <div id="task-modal" class="modal">
-        <div class="modal-content">
-            <span class="close-button">&times;</span>
-            <h2>Aufgabendetails</h2>
-            <h3 id="modal-task-title"></h3>
-
-            <div class="detail-section">
-                <h4>Notizen:</h4>
-                <textarea id="modal-note-input" placeholder="Fügen Sie hier Notizen hinzu..."></textarea>
-            </div>
-
-            <div class="detail-section">
-                <h4>Fällig am:</h4>
-                <input type="datetime-local" id="modal-deadline-input">
-            </div>
+    <!-- Login Screen -->
+    <div id="loginScreen" class="auth-screen">
+        <div class="auth-card">
+            <h1 class="auth-title">TaskFlow</h1>
+            <p class="auth-subtitle">Organisiere deine Aufgaben effizient</p>
             
-            <div class="detail-section">
-                <h4>Timer starten (Minuten):</h4>
-                <div style="display: flex; align-items: center; margin-bottom: 10px;">
-                    <input type="number" id="modal-timer-input" value="15" min="1" max="999">
-                    <button id="start-timer-button">Timer starten</button>
+            <div id="loginError" class="error-message hidden"></div>
+            
+            <form id="loginForm">
+                <div class="form-group">
+                    <label class="form-label" for="loginUsername">Benutzername</label>
+                    <input type="text" id="loginUsername" class="form-input" required>
                 </div>
-                <div id="modal-timer-display">Timer inaktiv.</div>
-            </div>
-            <button id="save-details-button">Speichern</button>
+                
+                <div class="form-group">
+                    <label class="form-label" for="loginPassword">Passwort</label>
+                    <input type="password" id="loginPassword" class="form-input" required>
+                </div>
+                
+                <button type="submit" class="btn btn-primary">Anmelden</button>
+                <button type="button" class="btn btn-secondary" onclick="showRegister()">Neues Konto erstellen</button>
+            </form>
         </div>
     </div>
-    <script src="script.js"></script>
+
+    <!-- Register Screen -->
+    <div id="registerScreen" class="auth-screen hidden">
+        <div class="auth-card">
+            <h1 class="auth-title">Registrieren</h1>
+            <p class="auth-subtitle">Erstelle dein TaskFlow-Konto</p>
+            
+            <div id="registerError" class="error-message hidden"></div>
+            
+            <form id="registerForm">
+                <div class="form-group">
+                    <label class="form-label" for="registerUsername">Benutzername</label>
+                    <input type="text" id="registerUsername" class="form-input" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" for="registerPassword">Passwort</label>
+                    <input type="password" id="registerPassword" class="form-input" required>
+                    
+                    <div class="password-requirements">
+                        <div class="requirement" id="req-length">Mindestens 8 Zeichen</div>
+                        <div class="requirement" id="req-lowercase">Mindestens ein Kleinbuchstabe</div>
+                        <div class="requirement" id="req-uppercase">Mindestens ein Großbuchstabe</div>
+                        <div class="requirement" id="req-number">Mindestens eine Zahl</div>
+                        <div class="requirement" id="req-special">Mindestens ein Sonderzeichen</div>
+                    </div>
+                </div>
+                
+                <button type="submit" class="btn btn-primary">Registrieren</button>
+                <button type="button" class="btn btn-secondary" onclick="showLogin()">Zurück zur Anmeldung</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Main App -->
+    <div id="appScreen" class="hidden">
+        <div class="app-container">
+            <header class="app-header">
+                <div class="app-logo">TaskFlow</div>
+                <div class="user-info">
+                    <span class="user-name">Angemeldet als: <strong id="currentUser"></strong></span>
+                    <button class="btn-logout" onclick="logout()">Abmelden</button>
+                </div>
+            </header>
+
+            <div class="lists-container">
+                <!-- Private List -->
+                <div class="list-card">
+                    <div class="list-header">
+                        <h2 class="list-title">
+                            Meine Aufgaben
+                            <span class="list-badge badge-private">Privat</span>
+                        </h2>
+                    </div>
+
+                    <div class="add-task-form">
+                        <div class="task-input-group">
+                            <input type="text" id="privateTaskInput" class="task-input" placeholder="Neue Aufgabe hinzufügen...">
+                            <select id="privatePriority" class="priority-select">
+                                <option value="low">Gering</option>
+                                <option value="medium">Mittel</option>
+                                <option value="high">Hoch</option>
+                            </select>
+                        </div>
+                        <button class="btn-add-task" onclick="addTask('private')">Aufgabe hinzufügen</button>
+                    </div>
+
+                    <div id="privateTasks" class="tasks-list"></div>
+                </div>
+
+                <!-- Public List -->
+                <div class="list-card">
+                    <div class="list-header">
+                        <h2 class="list-title">
+                            Team-Aufgaben
+                            <span class="list-badge badge-public">Öffentlich</span>
+                        </h2>
+                    </div>
+
+                    <div class="add-task-form">
+                        <div class="task-input-group">
+                            <input type="text" id="publicTaskInput" class="task-input" placeholder="Neue Aufgabe hinzufügen...">
+                            <select id="publicPriority" class="priority-select">
+                                <option value="low">Gering</option>
+                                <option value="medium">Mittel</option>
+                                <option value="high">Hoch</option>
+                            </select>
+                        </div>
+                        <button class="btn-add-task" onclick="addTask('public')">Aufgabe hinzufügen</button>
+                    </div>
+
+                    <div id="publicTasks" class="tasks-list"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Data Storage
+        let users = JSON.parse(localStorage.getItem('taskflow_users')) || {};
+        let currentUser = localStorage.getItem('taskflow_currentUser') || null;
+        let privateTasks = JSON.parse(localStorage.getItem('taskflow_private_' + currentUser)) || [];
+        let publicTasks = JSON.parse(localStorage.getItem('taskflow_public')) || [];
+
+        // Password Validation
+        function validatePassword(password) {
+            const requirements = {
+                length: password.length >= 8,
+                lowercase: /[a-z]/.test(password),
+                uppercase: /[A-Z]/.test(password),
+                number: /[0-9]/.test(password),
+                special: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)
+            };
+            return requirements;
+        }
+
+        // Update password requirements UI
+        document.getElementById('registerPassword')?.addEventListener('input', function(e) {
+            const requirements = validatePassword(e.target.value);
+            document.getElementById('req-length').classList.toggle('met', requirements.length);
+            document.getElementById('req-lowercase').classList.toggle('met', requirements.lowercase);
+            document.getElementById('req-uppercase').classList.toggle('met', requirements.uppercase);
+            document.getElementById('req-number').classList.toggle('met', requirements.number);
+            document.getElementById('req-special').classList.toggle('met', requirements.special);
+        });
+
+        // Show/Hide Screens
+        function showLogin() {
+            document.getElementById('registerScreen').classList.add('hidden');
+            document.getElementById('loginScreen').classList.remove('hidden');
+        }
+
+        function showRegister() {
+            document.getElementById('loginScreen').classList.add('hidden');
+            document.getElementById('registerScreen').classList.remove('hidden');
+        }
+
+        function showApp() {
+            document.getElementById('loginScreen').classList.add('hidden');
+            document.getElementById('registerScreen').classList.add('hidden');
+            document.getElementById('appScreen').classList.remove('hidden');
+            document.getElementById('currentUser').textContent = currentUser;
+            loadTasks();
+        }
+
+        // Register
+        document.getElementById('registerForm')?.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const username = document.getElementById('registerUsername').value.trim();
+            const password = document.getElementById('registerPassword').value;
+            const errorDiv = document.getElementById('registerError');
+
+            if (!username) {
+                errorDiv.textContent = 'Bitte gib einen Benutzernamen ein.';
+                errorDiv.classList.remove('hidden');
+                return;
+            }
+
+            if (users[username]) {
+                errorDiv.textContent = 'Dieser Benutzername existiert bereits.';
+                errorDiv.classList.remove('hidden');
+                return;
+            }
+
+            const requirements = validatePassword(password);
+            const allMet = Object.values(requirements).every(req => req === true);
+
+            if (!allMet) {
+                errorDiv.textContent = 'Das Passwort erfüllt nicht alle Anforderungen.';
+                errorDiv.classList.remove('hidden');
+                return;
+            }
+
+            users[username] = password;
+            localStorage.setItem('taskflow_users', JSON.stringify(users));
+            
+            errorDiv.classList.add('hidden');
+            alert('Registrierung erfolgreich! Du kannst dich jetzt anmelden.');
+            showLogin();
+            document.getElementById('registerForm').reset();
+        });
+
+        // Login
+        document.getElementById('loginForm')?.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const username = document.getElementById('loginUsername').value.trim();
+            const password = document.getElementById('loginPassword').value;
+            const errorDiv = document.getElementById('loginError');
+
+            if (!users[username]) {
+                errorDiv.textContent = 'Benutzername nicht gefunden.';
+                errorDiv.classList.remove('hidden');
+                return;
+            }
+
+            if (users[username] !== password) {
+                errorDiv.textContent = 'Falsches Passwort.';
+                errorDiv.classList.remove('hidden');
+                return;
+            }
+
+            currentUser = username;
+            localStorage.setItem('taskflow_currentUser', currentUser);
+            privateTasks = JSON.parse(localStorage.getItem('taskflow_private_' + currentUser)) || [];
+            publicTasks = JSON.parse(localStorage.getItem('taskflow_public')) || [];
+            
+            errorDiv.classList.add('hidden');
+            showApp();
+        });
+
+        // Logout
+        function logout() {
+            currentUser = null;
+            localStorage.removeItem('taskflow_currentUser');
+            privateTasks = [];
+            publicTasks = [];
+            document.getElementById('loginForm').reset();
+            showLogin();
+        }
+
+        // Add Task
+        function addTask(type) {
+            const inputId = type === 'private' ? 'privateTaskInput' : 'publicTaskInput';
+            const priorityId = type === 'private' ? 'privatePriority' : 'publicPriority';
+            
+            const text = document.getElementById(inputId).value.trim();
+            const priority = document.getElementById(priorityId).value;
+
+            if (!text) {
+                alert('Bitte gib eine Aufgabe ein.');
+                return;
+            }
+
+            const task = {
+                id: Date.now(),
+                text: text,
+                priority: priority,
+                completed: false,
+                createdBy: currentUser,
+                createdAt: new Date().toISOString(),
+                lastModifiedBy: currentUser,
+                lastModifiedAt: new Date().toISOString()
+            };
+
+            if (type === 'private') {
+                privateTasks.push(task);
+                localStorage.setItem('taskflow_private_' + currentUser, JSON.stringify(privateTasks));
+            } else {
+                publicTasks.push(task);
+                localStorage.setItem('taskflow_public', JSON.stringify(publicTasks));
+            }
+
+            document.getElementById(inputId).value = '';
+            document.getElementById(priorityId).value = 'low';
+            loadTasks();
+        }
+
+        // Toggle Task
+        function toggleTask(type, id) {
+            const tasks = type === 'private' ? privateTasks : publicTasks;
+            const task = tasks.find(t => t.id === id);
+            
+            if (task) {
+                task.completed = !task.completed;
+                task.lastModifiedBy = currentUser;
+                task.lastModifiedAt = new Date().toISOString();
+
+                if (type === 'private') {
+                    localStorage.setItem('taskflow_private_' + currentUser, JSON.stringify(privateTasks));
+                } else {
+                    localStorage.setItem('taskflow_public', JSON.stringify(publicTasks));
+                }
+
+                loadTasks();
+            }
+        }
+
+        // Load Tasks
+        function loadTasks() {
+            renderTasks('private', privateTasks, 'privateTasks');
+            renderTasks('public', publicTasks, 'publicTasks');
+        }
+
+        function renderTasks(type, tasks, containerId) {
+            const container = document.getElementById(containerId);
+            
+            if (tasks.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📋</div>
+                        <p>Keine Aufgaben vorhanden. Füge deine erste Aufgabe hinzu!</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = tasks.map(task => {
+                const priorityClass = `priority-${task.priority}`;
+                const priorityText = task.priority === 'low' ? 'Gering' : 
+                                   task.priority === 'medium' ? 'Mittel' : 'Hoch';
+                
+                return `
+                    <div class="task-item ${task.completed ? 'completed' : ''}">
+                        <div class="task-content">
+                            <input type="checkbox" 
+                                   class="task-checkbox" 
+                                   ${task.completed ? 'checked' : ''} 
+                                   onchange="toggleTask('${type}', ${task.id})">
+                            <div class="task-details">
+                                <div class="task-text">${task.text}</div>
+                                <div class="task-meta">
+                                    <span class="priority-badge ${priorityClass}">${priorityText}</span>
+                                    <span class="user-badge">Erstellt von: ${task.createdBy}</span>
+                                    ${task.lastModifiedBy !== task.createdBy ? 
+                                        `<span class="user-badge">Bearbeitet von: ${task.lastModifiedBy}</span>` : ''}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Check if user is logged in on page load
+        if (currentUser && users[currentUser]) {
+            showApp();
+        } else {
+            currentUser = null;
+            localStorage.removeItem('taskflow_currentUser');
+        }
+    </script>
 </body>
 </html>
